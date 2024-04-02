@@ -122,7 +122,7 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
     if(typeof app === "object") {
         await app.mv(appPath);
     }else if(typeof app === "string") {
-        var data = await fetch(app, {method: 'GET'}).then(res => res.arrayBuffer()).catch(e => console.log(e));
+        var data = await axios.get(app, {responseType: 'arraybuffer'});
         await fs.writeFileSync(appPath, data.data);
     }
 
@@ -130,9 +130,7 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
     if(typeof app == "object") {
         await app.mv(appPath);
     }else if(typeof app == "string") {
-        // var data = await axios.get(app, {responseType: 'arraybuffer'});
-        //use fetch
-        var data = await fetch(app, {method: 'GET'}).then(res => res.arrayBuffer()).catch(e => console.log(e));
+        var data = await axios.get(app, {responseType: 'arraybuffer'});
         await fs.writeFileSync(appPath, data.data);
     }
     var cookie = req?.cookies?.token;
