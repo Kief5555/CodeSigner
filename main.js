@@ -35,7 +35,7 @@ app.use('/', router);
 const port = process.env.PORT || 8050;
 const mongourl = process.env.MongoURL || "mongodb://localhost:27017";
 const jwttoken = process.env.JWTToken || "askuasign";
-const domain = "https://sign.apptesters.org";
+const domain = "https://sign.printedwaste.com";
 
 const client = new MongoClient(mongourl);
 
@@ -292,5 +292,5 @@ setInterval(async () => {
 }, 5 * 1000);
 
 app.listen(port, () => {
-    console.log(`AskuaSign listening at 0.0.0.0:${port}`);
+    console.log(`[System] AskuaSign listening at 0.0.0.0:${port}`);
 });
