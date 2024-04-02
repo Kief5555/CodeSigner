@@ -32,7 +32,7 @@ app.set('view engine', 'ejs');
 app.disable('x-powered-by');
 app.use('/', router);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8050;
 const mongourl = process.env.MongoURL || "mongodb://localhost:27017";
 const jwttoken = process.env.JWTToken || "askuasign";
 const domain = "https://sign.apptesters.org";
