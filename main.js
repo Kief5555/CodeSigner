@@ -91,7 +91,7 @@ async function signApp(uuid, res, req, store) {
 
     var nya = await execAwait(`zsign -k ${p12Path} -m ${provPath} ${password ? `-p ${password}` : ""} ${appPath} -o ${signAppPath} ${bid ? `-b ${bid.replace(/\s+/g, ' ').trim()}` : ""} ${appname ? `-n '${appname}'` : ""} -f`);
 
-    if(nya == true) {
+    if(nya == true) { 
         return res.json({ status: 'error', message: "error while signing app (incorrect password)" });
     }
     
@@ -222,7 +222,10 @@ router.get('/sign', async (req, res) => {
         return;
     }
     try {
-        await signApp(uuid, res, req, store);
+        await signApp(uuid, res, req, store).catch((err) => {
+            console.log(err);
+            return res.json({ status: 'error', message: "error while signing app (unknown, report in discord)" });
+        });
 
         res.json({ status: 'ok', message: "Signed!", url: `itms-services://?action=download-manifest&url=${domain}/plists/${uuid}.plist`, pcurl: `${domain}/install?uuid=${uuid}` });
 
@@ -239,7 +242,7 @@ router.get('/sign', async (req, res) => {
         }
         return deleteFiles(uuid);
     } catch (error) {
-        console.log(error)
+        console.log(error);
         return res.json({ status: 'error', message: "error while signing app (unknown, report in discord)" });
     }
 });
