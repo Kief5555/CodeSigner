@@ -92,7 +92,7 @@ async function signApp(uuid, res, req, store) {
     var nya = await execAwait(`zsign -k ${p12Path} -m ${provPath} ${password ? `-p ${password}` : ""} ${appPath} -o ${signAppPath} ${bid ? `-b ${bid.replace(/\s+/g, ' ').trim()}` : ""} ${appname ? `-n '${appname}'` : ""} -f`);
 
     if(nya == true) { 
-        return res.json({ status: 'error', message: "error while signing app (incorrect password)" });
+        return new Error("error while signing app (zsign)");
     }
     
     const plist = await makePlist(bid, uuid, nya, domain);
@@ -218,13 +218,12 @@ router.post('/upload', async (req, res) => {
 router.get('/sign', async (req, res) => {
     const { uuid, store } = req.query;
     if (!uuid) {
-        res.json({ status: 'error', message: "Missing parameters" });
-        return;
+        return res.json({ status: 'error', message: "Missing parameters" });
     }
     try {
         await signApp(uuid, res, req, store).catch((err) => {
             console.log(err);
-            return res.json({ status: 'error', message: "error while signing app (unknown, report in discord)" });
+            return res.json({ status: 'error', message: err.message});
         });
 
         res.json({ status: 'ok', message: "Signed!", url: `itms-services://?action=download-manifest&url=${domain}/plists/${uuid}.plist`, pcurl: `${domain}/install?uuid=${uuid}` });
@@ -250,8 +249,7 @@ router.get('/sign', async (req, res) => {
 router.get('/install', async (req, res) => {
     var uuid = req?.query?.uuid;
     if (!uuid) {
-        res.json({ status: 'error', message: "Missing parameters" });
-        return;
+        return res.json({ status: 'error', message: "Missing parameters" });
     }
     res.redirect(`itms-services://?action=download-manifest&url=${domain}/plists/${uuid}.plist`);
 });
