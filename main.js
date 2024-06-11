@@ -116,7 +116,7 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res) {
         var files = fs.readdirSync(path.join(__dirname, 'files', 'temp'));
         var totalSize = 0;
         files.forEach(file => {
-            totalSize += fs.statSync(path.join(__dirname, 'files', 'temp', file)).size;
+            totalSize += fs.statSync(path.join(__dirname, 'files', 'temp', file))?.size;
         });
 
         if (totalSize > 8 * 1024 * 1024 * 1024) {
@@ -126,9 +126,13 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res) {
 
             var i = 0;
             while (totalSize > 8 * 1024 * 1024 * 1024) {
+                try {
                 fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
                 totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
                 i++;
+                } catch(e) {
+                    console.log(e);
+                }
             }
         }
     } catch (e) {
