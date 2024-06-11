@@ -5,7 +5,7 @@ const fileUpload = require('express-fileupload');
 const router = express.Router();
 const moment = require('moment-timezone');
 const MongoClient = require('mongodb').MongoClient;
-const {sign, verify} = require('jsonwebtoken');
+const { sign, verify } = require('jsonwebtoken');
 const argon2 = require('argon2');
 const axios = require('axios');
 const CookieP = require('cookie-parser');
@@ -18,15 +18,15 @@ const app = express();
 
 app.use(CookieP());
 app.use(fileUpload({
-  limits: { fileSize: 5 * 1024 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024 * 1024 },
 }));
 app.use(userAgent.express());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets/', express.static(__dirname + '/assets'));
 app.use('/apps/', express.static(__dirname + '/files/signed'));
 app.use('/plists/', express.static(__dirname + '/files/plists'));
-app.use(express.json({limit: '5GB'}));
-app.use(express.urlencoded({ extended: true, limit: '5GB', parameterLimit: 1000000}));
+app.use(express.json({ limit: '5GB' }));
+app.use(express.urlencoded({ extended: true, limit: '5GB', parameterLimit: 1000000 }));
 app.set("views", path.join(__dirname, "views"));
 app.set('view engine', 'ejs');
 app.disable('x-powered-by');
@@ -45,9 +45,9 @@ async function storeCert(req, res, uuid) {
     const DUsers = DB.collection('Stored');
 
     const token = await argon2.hash(crypto.randomBytes(6).toString('hex'), { hashLength: 18 });
-    await DUsers.insertOne({uuid: uuid, token: token, expire: moment().add(3, 'days').unix()});
+    await DUsers.insertOne({ uuid: uuid, token: token, expire: moment().add(3, 'days').unix() });
 
-    res.cookie('token', token, { maxAge: 31536000 });    
+    res.cookie('token', token, { maxAge: 31536000 });
 }
 
 async function signApp(uuid, res, req, store) {
@@ -63,26 +63,26 @@ async function signApp(uuid, res, req, store) {
 
     let ouuid;
 
-    if(token) {
-        var User = await DUsers.findOne({token: token});
-        if(User) {
+    if (token) {
+        var User = await DUsers.findOne({ token: token });
+        if (User) {
             ouuid = User.uuid;
-            await DUsers.updateOne({token: token}, {$set: {expire: moment().add(3, 'days').unix()}});
+            await DUsers.updateOne({ token: token }, { $set: { expire: moment().add(3, 'days').unix() } });
         }
     }
 
-    if(token && store == "false") {
+    if (token && store == "false") {
         res.clearCookie('token');
     }
     res.clearCookie('nya');
-    
+
     const app = await Apps.findOne({ UUID: uuid });
 
     const appname = app.CustomName;
     const bid = app.BundleID;
 
     const password = signedtoken.password;
-    
+
     const appPath = path.join(__dirname, 'files', 'temp', `${uuid}.ipa`);
     const p12Path = path.join(__dirname, 'files', 'certs', `${ouuid ? ouuid : uuid}.p12`);
     const provPath = path.join(__dirname, 'files', 'certs', `${ouuid ? ouuid : uuid}.mobileprovision`);
@@ -92,16 +92,15 @@ async function signApp(uuid, res, req, store) {
     console.log(`Executing: zsign -k ${p12Path} -m ${provPath} ${password ? `-p ${password}` : ""} ${appPath} -o ${signAppPath} ${bid ? `-b ${bid.replace(/\s+/g, ' ').trim()}` : ""} ${appname ? `-n '${appname}'` : ""} -f`);
     var nya = await execAwait(`zsign -k ${p12Path} -m ${provPath} ${password ? `-p ${password}` : ""} ${appPath} -o ${signAppPath} ${bid ? `-b ${bid.replace(/\s+/g, ' ').trim()}` : ""} ${appname ? `-n '${appname}'` : ""} -f`);
 
-    if(nya == true) { 
+    if (nya == true) {
         return new Error("error while signing app (zsign)");
     }
-    
+
     const plist = await makePlist(bid, uuid, nya, domain);
     await fs.writeFileSync(plistPath, plist);
 }
 
-async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
-{
+async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res) {
     const appPath = path.join(__dirname, 'files', 'temp', `${uuid}.ipa`);
     const p12Path = path.join(__dirname, 'files', 'certs', `${uuid}.p12`);
     const provPath = path.join(__dirname, 'files', 'certs', `${uuid}.mobileprovision`);
@@ -113,24 +112,27 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
         BundleID: bid,
         Expire: moment().add(3, 'days').unix()
     }
+    try {
+        var files = fs.readdirSync(path.join(__dirname, 'files', 'temp'));
+        var totalSize = 0;
+        files.forEach(file => {
+            totalSize += fs.statSync(path.join(__dirname, 'files', 'temp', file)).size;
+        });
 
-    var files = fs.readdirSync(path.join(__dirname, 'files', 'temp'));
-    var totalSize = 0;
-    files.forEach(file => {
-        totalSize += fs.statSync(path.join(__dirname, 'files', 'temp', file)).size;
-    });
+        if (totalSize > 8 * 1024 * 1024 * 1024) {
+            var sortedFiles = files.map(file => {
+                return { file: file, time: fs.statSync(path.join(__dirname, 'files', 'temp', file)).mtimeMs };
+            }).sort((a, b) => a.time - b.time);
 
-    if(totalSize > 8 * 1024 * 1024 * 1024) {
-        var sortedFiles = files.map(file => {
-            return { file: file, time: fs.statSync(path.join(__dirname, 'files', 'temp', file)).mtimeMs };
-        }).sort((a, b) => a.time - b.time);
-
-        var i = 0;
-        while(totalSize > 8 * 1024 * 1024 * 1024) {
-            fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
-            totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
-            i++;
+            var i = 0;
+            while (totalSize > 8 * 1024 * 1024 * 1024) {
+                fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
+                totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
+                i++;
+            }
         }
+    } catch (e) {
+        console.log(e);
     }
 
     await client.connect();
@@ -139,43 +141,43 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
     const DUsers = await DB.collection('Stored');
 
     // check if app is file or string
-    if(typeof app === "object") {
+    if (typeof app === "object") {
         await app.mv(appPath);
-    }else if(typeof app === "string") {
-        var data = await axios.get(app, {responseType: 'arraybuffer'});
+    } else if (typeof app === "string") {
+        var data = await axios.get(app, { responseType: 'arraybuffer' });
         await fs.writeFileSync(appPath, data.data);
     }
 
 
-    if(typeof app == "object") {
+    if (typeof app == "object") {
         await app.mv(appPath);
-    }else if(typeof app == "string") {
-        var data = await axios.get(app, {responseType: 'arraybuffer'});
+    } else if (typeof app == "string") {
+        var data = await axios.get(app, { responseType: 'arraybuffer' });
         await fs.writeFileSync(appPath, data.data);
     }
     var cookie = req?.cookies?.token;
-    if(store == "true") {
-        if(cookie) {
-            var meow = await DUsers.findOne({token: cookie});
-            if(meow) {
+    if (store == "true") {
+        if (cookie) {
+            var meow = await DUsers.findOne({ token: cookie });
+            if (meow) {
                 await Apps.insertOne(AppStruct);
                 return;
-            }else{
+            } else {
                 res.clearCookie('token');
             }
-        }else {
+        } else {
             await storeCert(req, res, uuid);
         }
-    }else if(store == "false" && cookie) {
-        var meow = await DUsers.findOne({token: cookie});
-        if(meow) {
+    } else if (store == "false" && cookie) {
+        var meow = await DUsers.findOne({ token: cookie });
+        if (meow) {
             await Apps.insertOne(AppStruct);
             return;
         }
     }
 
     await Apps.insertOne(AppStruct);
-    await p12.mv(p12Path); 
+    await p12.mv(p12Path);
     await prov.mv(provPath);
 }
 
@@ -183,7 +185,7 @@ router.get('/', async (req, res) => {
     var mobile = req.useragent.isMobile;
     var token = req?.cookies?.token;
 
-    return res.render('index.ejs', {mobile: mobile, token: token});
+    return res.render('index.ejs', { mobile: mobile, token: token });
 });
 
 router.get('/notice', async (req, res) => {
@@ -197,7 +199,7 @@ router.post('/upload', async (req, res) => {
         return;
     }
     app = app ? app : req.body?.ipa;
-    
+
     const p12 = req?.files?.p12;
     if (!p12 && !req.body?.p12) {
         res.json({ status: 'error', message: "Missing parameters (P12)" });
@@ -222,13 +224,13 @@ router.post('/upload', async (req, res) => {
 
     try {
         const uuid = makeKey(6);
-        const nya = sign({password: password}, jwttoken, { expiresIn: '300s' });
+        const nya = sign({ password: password }, jwttoken, { expiresIn: '300s' });
 
         res.cookie('nya', nya, { maxAge: 31536000 });
 
         await uploadApp(app, p12, prov, bname, bid, uuid, store, req, res);
 
-        res.json({ status: 'ok', message: "Uploaded!", uuid: uuid});
+        res.json({ status: 'ok', message: "Uploaded!", uuid: uuid });
     } catch (error) {
         console.log(error)
         return res.json({ status: 'error', message: "error while uploading app" });
@@ -243,7 +245,7 @@ router.get('/sign', async (req, res) => {
     try {
         await signApp(uuid, res, req, store).catch((err) => {
             console.log(err);
-            return res.json({ status: 'error', message: err.message});
+            return res.json({ status: 'error', message: err.message });
         });
 
         res.json({ status: 'ok', message: "Signed!", url: `itms-services://?action=download-manifest&url=${domain}/plists/${uuid}.plist`, pcurl: `${domain}/install?uuid=${uuid}` });
@@ -253,9 +255,9 @@ router.get('/sign', async (req, res) => {
         const DB = await client.db('AskuaSign');
         const DUsers = await DB.collection('Stored');
 
-        if(token) {
-            var User = await DUsers.findOne({token: token});
-            if(User) {
+        if (token) {
+            var User = await DUsers.findOne({ token: token });
+            if (User) {
                 return;
             }
         }
@@ -280,14 +282,13 @@ setInterval(async () => {
     const DB = client.db('AskuaSign');
     const Apps = await DB.collection('Apps');
     const Stored = await DB.collection('Stored');
-    const SignedApps = await Apps.find({Expire: { $lt: moment().unix() }}).toArray();
-    const StoredCerts = await Stored.find({expire: { $lt: moment().unix() }}).toArray();
+    const SignedApps = await Apps.find({ Expire: { $lt: moment().unix() } }).toArray();
+    const StoredCerts = await Stored.find({ expire: { $lt: moment().unix() } }).toArray();
 
     SignedApps.forEach(async (app) => {
         const uuid = app.UUID;
-        try
-        {
-            if(app.Expire < moment().unix()) {
+        try {
+            if (app.Expire < moment().unix()) {
                 await Apps.deleteOne({ UUID: uuid });
                 await fs.unlinkSync(path.join(__dirname, 'files', 'plists', `${uuid}.plist`));
                 await fs.unlinkSync(path.join(__dirname, 'files', 'signed', `${uuid}.ipa`));
@@ -295,12 +296,11 @@ setInterval(async () => {
         } catch (_) {
             null
         }
-     })
-     StoredCerts.forEach(async (cert) => {
+    })
+    StoredCerts.forEach(async (cert) => {
         const uuid = cert.uuid;
-        try
-        {
-            if(cert.expire < moment().unix()) {
+        try {
+            if (cert.expire < moment().unix()) {
                 await StoredCerts.deleteOne({ uuid: uuid });
                 await fs.unlinkSync(path.join(__dirname, 'files', 'certs', `${uuid}.p12`));
                 await fs.unlinkSync(path.join(__dirname, 'files', 'certs', `${uuid}.mobileprovision`));
@@ -308,7 +308,7 @@ setInterval(async () => {
         } catch (_) {
             null
         }
-     })
+    })
 
 }, 5 * 1000);
 
