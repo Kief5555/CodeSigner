@@ -114,6 +114,25 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res)
         Expire: moment().add(3, 'days').unix()
     }
 
+    var files = fs.readdirSync(path.join(__dirname, 'files', 'temp'));
+    var totalSize = 0;
+    files.forEach(file => {
+        totalSize += fs.statSync(path.join(__dirname, 'files', 'temp', file)).size;
+    });
+
+    if(totalSize > 8 * 1024 * 1024 * 1024) {
+        var sortedFiles = files.map(file => {
+            return { file: file, time: fs.statSync(path.join(__dirname, 'files', 'temp', file)).mtimeMs };
+        }).sort((a, b) => a.time - b.time);
+
+        var i = 0;
+        while(totalSize > 8 * 1024 * 1024 * 1024) {
+            fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
+            totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
+            i++;
+        }
+    }
+
     await client.connect();
     const DB = client.db('AskuaSign');
     const Apps = await DB.collection('Apps');
