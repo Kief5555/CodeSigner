@@ -17,6 +17,7 @@ require('dotenv').config();
 
 const app = express();
 
+app.use(cors({ credentials: true, origin: true }));
 app.use(CookieP());
 app.use(fileUpload({
     limits: { fileSize: 5 * 1024 * 1024 * 1024 },
@@ -32,8 +33,6 @@ app.set("views", path.join(__dirname, "views"));
 app.set('view engine', 'ejs');
 app.disable('x-powered-by');
 app.use('/', router);
-//cors
-app.use(cors({ credentials: true, origin: true }));
 
 const port = process.env.PORT || 8050;
 const mongourl = process.env.MongoURL || "mongodb://localhost:27017";
