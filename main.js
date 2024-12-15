@@ -33,7 +33,7 @@ app.set('view engine', 'ejs');
 app.disable('x-powered-by');
 app.use('/', router);
 //cors
-app.use(cors());
+app.use(cors({ credentials: true, origin: true }));
 
 const port = process.env.PORT || 8050;
 const mongourl = process.env.MongoURL || "mongodb://localhost:27017";
