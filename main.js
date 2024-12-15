@@ -60,8 +60,19 @@ async function signApp(uuid, res, req, store) {
 
     let token = req?.cookies?.token;
     let passwordtoken = req?.cookies?.nya;
+    let directPassword = req.query.password
 
-    var signedtoken = verify(passwordtoken, jwttoken);
+    let password;
+    if (passwordtoken) {
+        try {
+            var signedtoken = verify(passwordtoken, jwttoken);
+            password = signedtoken.password;
+        } catch (err) {
+            password = directPassword;
+        }
+    } else {
+        password = directPassword;
+    }
 
     let ouuid;
 
@@ -83,7 +94,7 @@ async function signApp(uuid, res, req, store) {
     const appname = app.CustomName;
     const bid = app.BundleID;
 
-    const password = signedtoken.password;
+    // const password = signedtoken.password;
 
     const appPath = path.join(__dirname, 'files', 'temp', `${uuid}.ipa`);
     const p12Path = path.join(__dirname, 'files', 'certs', `${ouuid ? ouuid : uuid}.p12`);
@@ -129,10 +140,10 @@ async function uploadApp(app, p12, prov, bname, bid, uuid, store, req, res) {
             var i = 0;
             while (totalSize > 8 * 1024 * 1024 * 1024) {
                 try {
-                fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
-                totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
-                i++;
-                } catch(e) {
+                    fs.unlinkSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file));
+                    totalSize -= fs.statSync(path.join(__dirname, 'files', 'temp', sortedFiles[i].file)).size;
+                    i++;
+                } catch (e) {
                     console.log(e);
                 }
             }
