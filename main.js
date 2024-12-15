@@ -12,6 +12,7 @@ const CookieP = require('cookie-parser');
 const userAgent = require('express-useragent');
 const crypto = require('crypto');
 const { makeKey, execAwait, makePlist, deleteFiles } = require('./utils');
+const cors = require("cors");
 require('dotenv').config();
 
 const app = express();
@@ -31,6 +32,8 @@ app.set("views", path.join(__dirname, "views"));
 app.set('view engine', 'ejs');
 app.disable('x-powered-by');
 app.use('/', router);
+//cors
+app.use(cors());
 
 const port = process.env.PORT || 8050;
 const mongourl = process.env.MongoURL || "mongodb://localhost:27017";
